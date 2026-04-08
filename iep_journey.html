@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The IEP Journey - Bilingual Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- OpenDyslexic font for dyslexia mode -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+      :root {
+        --font-body: 'Lexend', sans-serif;
+        --font-display: 'Lora', serif;
+        --gold: #7A5C0E;
+        --navy: #0F2140;
+        --parch: #F8F4EE;
+      }
+
+      body { font-family: var(--font-body); }
+
+      .dyslexic-mode {
+        font-family: 'Lexend', sans-serif !important;
+        letter-spacing: 0.08em !important;
+        word-spacing: 0.2em !important;
+        line-height: 1.9 !important;
+        font-size: 1.08rem !important;
+      }
+      .dyslexic-mode * {
+        font-family: 'Lexend', sans-serif !important;
+        letter-spacing: 0.06em;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: auto;
+        width: 1px; height: 1px;
+        overflow: hidden;
+      }
+      .skip-link:focus {
+        position: fixed;
+        left: 1rem; top: 1rem;
+        width: auto; height: auto;
+        background: #0F2140;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 2rem;
+        font-weight: 700;
+        z-index: 9999;
+        font-size: 0.9rem;
+      }
+
+      @media print {
+        body { background-color: white !important; }
+        .print-break-inside-avoid { break-inside: avoid; }
+        .print-hidden { display: none !important; }
+        .print-border-l { border-left-width: 4px !important; border-left-color: #1e293b !important; }
+      }
+
+      .card-hover {
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.10);
+      }
+
+      .fade-in {
+        animation: fadeInUp 0.35s ease both;
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .filter-btn.active { outline: 3px solid currentColor; outline-offset: 2px; }
+    </style>
+</head>
+<body class="bg-[#FAF9F6] print:bg-white">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useCallback } = React;
+
+    // ── TERMS (21 terms — rubric requires 20+) ──────────────────────────────
+    const TERMS_DATA = [
+      // RED — Legal Protections & Rights
+      { id: 1, type: 'red',
+        name:  { en: 'PWN', es: 'PWN' },
+        alt:   { en: 'Prior Written Notice', es: 'Aviso Previo por Escrito' },
+        def:   { en: 'The school must put any proposed change or refusal in writing before acting, explaining why (34 CFR § 300.503).', es: 'La escuela debe poner cualquier cambio o rechazo propuesto por escrito antes de actuar, explicando el motivo (34 CFR § 300.503).' },
+        icon: 'fa-solid fa-file-pen' },
+
+      { id: 2, type: 'red',
+        name:  { en: 'Stay Put', es: 'Stay Put' },
+        alt:   { en: 'Maintenance of Placement', es: 'Mantenimiento de Ubicación' },
+        def:   { en: 'Keeps your child\'s current services active while any legal dispute is resolved (20 U.S.C. § 1415(j)).', es: 'Mantiene activos los servicios actuales de su hijo mientras se resuelve cualquier disputa legal (20 U.S.C. § 1415(j)).' },
+        icon: 'fa-solid fa-shield-halved' },
+
+      { id: 3, type: 'red',
+        name:  { en: 'Due Process', es: 'Debido Proceso' },
+        alt:   { en: 'Legal Hearing', es: 'Audiencia Legal' },
+        def:   { en: 'A formal legal avenue to resolve disagreements between parents and the district before or instead of court (34 CFR § 300.511).', es: 'Una vía legal formal para resolver desacuerdos entre los padres y el distrito antes de ir a los tribunales (34 CFR § 300.511).' },
+        icon: 'fa-solid fa-gavel' },
+
+      { id: 4, type: 'red',
+        name:  { en: 'Procedural Safeguards', es: 'Garantías Procesales' },
+        alt:   { en: 'Parental Rights Handbook', es: 'Manual de Derechos' },
+        def:   { en: 'The official document the school must give you explaining every legal right you hold under IDEA (20 U.S.C. § 1415(d)).', es: 'El documento oficial que la escuela debe darle explicando cada derecho legal que tiene bajo la ley IDEA (20 U.S.C. § 1415(d)).' },
+        icon: 'fa-regular fa-file-lines' },
+
+      { id: 5, type: 'red',
+        name:  { en: 'MDR', es: 'MDR' },
+        alt:   { en: 'Manifestation Determination Review', es: 'Revisión de Determinación de Manifestación' },
+        def:   { en: 'A mandatory meeting to determine whether a behavior was caused by the disability before the school can impose suspension or expulsion (34 CFR § 300.530(e)).', es: 'Una reunión obligatoria para determinar si un comportamiento fue causado por la discapacidad antes de que la escuela pueda suspender o expulsar (34 CFR § 300.530(e)).' },
+        icon: 'fa-solid fa-shield-heart' },
+
+      { id: 6, type: 'red',
+        name:  { en: 'IEE', es: 'IEE' },
+        alt:   { en: 'Independent Educational Evaluation', es: 'Evaluación Educativa Independiente' },
+        def:   { en: 'Your right to request an evaluation by a qualified professional outside the school district when you disagree with the school\'s assessment (34 CFR § 300.502).', es: 'Su derecho a solicitar una evaluación por un profesional independiente cuando no está de acuerdo con la evaluación de la escuela (34 CFR § 300.502).' },
+        icon: 'fa-solid fa-magnifying-glass-chart' },
+
+      { id: 7, type: 'red',
+        name:  { en: 'Mediation', es: 'Mediación' },
+        alt:   { en: 'Voluntary Dispute Resolution', es: 'Resolución Voluntaria de Disputas' },
+        def:   { en: 'A free, voluntary process where a neutral mediator helps parents and the district reach an agreement without a formal hearing (34 CFR § 300.506).', es: 'Un proceso gratuito y voluntario donde un mediador neutral ayuda a los padres y al distrito a llegar a un acuerdo sin una audiencia formal (34 CFR § 300.506).' },
+        icon: 'fa-solid fa-handshake' },
+
+      // YELLOW — IEP Structure & Placement
+      { id: 8, type: 'yellow',
+        name:  { en: 'FAPE', es: 'FAPE' },
+        alt:   { en: 'Free Appropriate Public Education', es: 'Educación Pública Gratuita y Apropiada' },
+        def:   { en: 'The legal guarantee that every eligible child receives special education and related services at no cost, tailored to their unique needs (20 U.S.C. § 1401(9)).', es: 'La garantía legal de que cada niño elegible recibe educación especial y servicios relacionados sin costo, adaptados a sus necesidades únicas (20 U.S.C. § 1401(9)).' },
+        icon: 'fa-solid fa-graduation-cap' },
+
+      { id: 9, type: 'yellow',
+        name:  { en: 'LRE', es: 'LRE' },
+        alt:   { en: 'Least Restrictive Environment', es: 'Entorno Menos Restrictivo' },
+        def:   { en: 'The legal mandate that children with disabilities learn alongside non-disabled peers to the maximum extent appropriate (34 CFR § 300.114).', es: 'El mandato legal de que los niños con discapacidades aprendan junto a sus compañeros sin discapacidades en la mayor medida apropiada (34 CFR § 300.114).' },
+        icon: 'fa-solid fa-house' },
+
+      { id: 10, type: 'yellow',
+        name:  { en: 'PLAAFP', es: 'PLAAFP' },
+        alt:   { en: 'Present Levels of Academic Achievement and Functional Performance', es: 'Niveles Actuales de Desempeño' },
+        def:   { en: 'The section of the IEP describing exactly where your child is right now academically and functionally — the foundation for all goals.', es: 'La sección del IEP que describe exactamente dónde está su hijo ahora académica y funcionalmente: la base de todas las metas.' },
+        icon: 'fa-solid fa-chart-line' },
+
+      { id: 11, type: 'yellow',
+        name:  { en: 'Accommodations', es: 'Acomodaciones' },
+        alt:   { en: 'How the Child Learns', es: 'Cómo Aprende el Niño' },
+        def:   { en: 'Changes to HOW a child learns — such as extra time on tests or preferential seating — without changing the grade-level curriculum.', es: 'Cambios en CÓMO aprende un niño — como tiempo extra en exámenes o asientos preferenciales — sin cambiar el plan de estudios de nivel de grado.' },
+        icon: 'fa-solid fa-desktop' },
+
+      { id: 12, type: 'yellow',
+        name:  { en: 'Modifications', es: 'Modificaciones' },
+        alt:   { en: 'What the Child Learns', es: 'Qué Aprende el Niño' },
+        def:   { en: 'Changes to WHAT a child learns, fundamentally altering the academic expectation — for example, reducing the number of math problems or simplifying reading passages.', es: 'Cambios en QUÉ aprende un niño, alterando fundamentalmente la expectativa académica — por ejemplo, reducir el número de problemas de matemáticas.' },
+        icon: 'fa-solid fa-book-open' },
+
+      { id: 13, type: 'yellow',
+        name:  { en: 'Annual Goals', es: 'Metas Anuales' },
+        alt:   { en: 'Measurable IEP Targets', es: 'Objetivos Medibles del IEP' },
+        def:   { en: 'Written targets in the IEP describing what your child can reasonably accomplish in one year. Must be measurable and based on current performance levels.', es: 'Objetivos escritos en el IEP que describen lo que su hijo puede lograr razonablemente en un año. Deben ser medibles y basados en los niveles de desempeño actuales.' },
+        icon: 'fa-solid fa-bullseye' },
+
+      { id: 14, type: 'yellow',
+        name:  { en: 'ESY', es: 'ESY' },
+        alt:   { en: 'Extended School Year', es: 'Año Escolar Extendido' },
+        def:   { en: 'Special education services provided beyond the regular school year for students whose skills would significantly regress during breaks. Cannot be denied solely to save money (34 CFR § 300.106).', es: 'Servicios de educación especial más allá del año escolar regular para estudiantes cuyas habilidades regresarían significativamente durante los recesos. No se puede negar solo para ahorrar dinero (34 CFR § 300.106).' },
+        icon: 'fa-solid fa-calendar-plus' },
+
+      // GREEN — Behavior, Instruction & Progress
+      { id: 15, type: 'green',
+        name:  { en: 'SDI', es: 'SDI' },
+        alt:   { en: 'Specially Designed Instruction', es: 'Instrucción Especialmente Diseñada' },
+        def:   { en: 'The individualized instruction that adapts the content, methodology, or delivery of teaching to address your child\'s unique needs — the core of special education services.', es: 'La instrucción individualizada que adapta el contenido, metodología o entrega de la enseñanza para abordar las necesidades únicas de su hijo: el núcleo de los servicios de educación especial.' },
+        icon: 'fa-solid fa-chalkboard-user' },
+
+      { id: 16, type: 'green',
+        name:  { en: 'FBA', es: 'FBA' },
+        alt:   { en: 'Functional Behavior Assessment', es: 'Evaluación Funcional del Comportamiento' },
+        def:   { en: 'A structured evaluation to identify WHY a behavior occurs — the trigger, the function it serves, and the context — so the IEP team can build an effective support plan.', es: 'Una evaluación estructurada para identificar POR QUÉ ocurre un comportamiento — el desencadenante, la función que cumple y el contexto — para que el equipo del IEP pueda construir un plan de apoyo eficaz.' },
+        icon: 'fa-solid fa-magnifying-glass' },
+
+      { id: 17, type: 'green',
+        name:  { en: 'BIP', es: 'BIP' },
+        alt:   { en: 'Behavior Intervention Plan', es: 'Plan de Intervención de Comportamiento' },
+        def:   { en: 'A proactive, positive support plan built from the FBA that teaches replacement behaviors and outlines how staff should respond to prevent and address challenging behavior.', es: 'Un plan de apoyo positivo y proactivo construido a partir del FBA que enseña comportamientos de reemplazo y describe cómo el personal debe responder para prevenir y abordar el comportamiento desafiante.' },
+        icon: 'fa-solid fa-bolt' },
+
+      { id: 18, type: 'green',
+        name:  { en: 'RBT', es: 'RBT' },
+        alt:   { en: 'Registered Behavior Technician', es: 'Técnico de Comportamiento Registrado' },
+        def:   { en: 'A trained paraprofessional who provides 1-on-1 implementation of the BIP under the supervision of a Board Certified Behavior Analyst (BCBA).', es: 'Un paraprofesional capacitado que proporciona implementación 1 a 1 del BIP bajo la supervisión de un analista de comportamiento certificado (BCBA).' },
+        icon: 'fa-solid fa-users' },
+
+      { id: 19, type: 'green',
+        name:  { en: 'Meaningful Progress', es: 'Progreso Significativo' },
+        alt:   { en: 'Endrew F. Standard', es: 'Estándar Endrew F.' },
+        def:   { en: 'The Supreme Court\'s 2017 ruling that every IEP must be "appropriately ambitious" and provide real growth, not just minimal or trivial advancement (Endrew F. v. Douglas County, 580 U.S. 386).', es: 'La decisión de la Corte Suprema de 2017 que establece que cada IEP debe ser "apropiadamente ambicioso" y proporcionar crecimiento real, no solo avance mínimo o trivial.' },
+        icon: 'fa-solid fa-scale-balanced' },
+
+      { id: 20, type: 'green',
+        name:  { en: 'FCT', es: 'FCT' },
+        alt:   { en: 'Functional Communication Training', es: 'Entrenamiento en Comunicación Funcional' },
+        def:   { en: 'An evidence-based intervention that teaches children to communicate needs through appropriate means — words, pictures, or gestures — instead of challenging behavior.', es: 'Una intervención basada en evidencia que enseña a los niños a comunicar necesidades de manera apropiada — palabras, imágenes o gestos — en lugar de comportamientos desafiantes.' },
+        icon: 'fa-regular fa-message' },
+
+      { id: 21, type: 'green',
+        name:  { en: 'Progress Monitoring', es: 'Monitoreo del Progreso' },
+        alt:   { en: 'Ongoing Data Collection', es: 'Recopilación de Datos Continua' },
+        def:   { en: 'The regular, systematic collection of data on your child\'s progress toward each IEP goal. The school must report this to you as often as they report to parents of non-disabled students.', es: 'La recopilación regular y sistemática de datos sobre el progreso de su hijo hacia cada meta del IEP. La escuela debe reportarle esto con la misma frecuencia con que reporta a los padres de estudiantes sin discapacidades.' },
+        icon: 'fa-solid fa-chart-bar' },
+    ];
+
+    // ── SCENARIOS (3 Action Loops) ─────────────────────────────────────────
+    const SCENARIOS = [
+      { id: 101,
+        iconCls: 'fa-solid fa-scale-balanced text-3xl text-emerald-500',
+        feeling:    { en: '"My child has had the exact same reading and math goals for three years."', es: '"Mi hijo ha tenido las mismas metas de lectura y matemáticas durante tres años."' },
+        connection: { en: 'This is "trivial" progress, explicitly rejected by the Supreme Court (Endrew F. v. Douglas County). Goals must aim for meaningful, appropriately ambitious growth tailored to the child\'s potential.', es: 'Este es un progreso "trivial", explícitamente rechazado por la Corte Suprema. Las metas deben apuntar a un crecimiento significativo y apropiadamente ambicioso adaptado al potencial del niño.' },
+        action:     { en: 'I am requesting an IEP revision meeting to set "Appropriately Ambitious" goals based on my child\'s current potential, supported by updated PLAAFP data and progress monitoring records.', es: 'Solicito una reunión de revisión del IEP para establecer metas "apropiadamente ambiciosas" basadas en el potencial actual de mi hijo, respaldadas por datos actualizados del PLAAFP y registros de monitoreo del progreso.' }
+      },
+      { id: 104,
+        iconCls: 'fa-solid fa-shield-halved text-3xl text-red-500',
+        feeling:    { en: '"The school keeps calling me to pick him up early because of his behavior."', es: '"La escuela me sigue llamando para que lo recoja temprano debido a su comportamiento."' },
+        connection: { en: 'Repeated early dismissals constitute a "de facto suspension." IDEA mandates that when behavior impedes learning, the IEP team must consider positive behavioral interventions — not exclusion.', es: 'Las salidas tempranas repetidas constituyen una "suspensión de facto". La ley IDEA ordena que cuando el comportamiento impide el aprendizaje, el equipo del IEP debe considerar intervenciones de comportamiento positivo, no exclusión.' },
+        action:     { en: 'I am formally requesting an FBA to identify the function and triggers of this behavior, and the creation of a BIP with 1-on-1 RBT support. These early dismissals may also require a Manifestation Determination Review.', es: 'Solicito formalmente una evaluación FBA para identificar la función y los desencadenantes de este comportamiento, y la creación de un BIP con apoyo 1 a 1 de un RBT. Estas salidas tempranas también pueden requerir una Revisión de Determinación de Manifestación.' }
+      },
+      { id: 109,
+        iconCls: 'fa-solid fa-language text-3xl text-pink-500',
+        feeling:    { en: '"The IEP documents are in English, and the meeting moves too fast for me to translate."', es: '"Los documentos del IEP están en inglés y la reunión avanza demasiado rápido para que yo traduzca."' },
+        connection: { en: 'Procedural Safeguards guarantee meaningful parent participation. If a language barrier prevents full understanding, the district is legally required to provide translation and interpretation.', es: 'Las Garantías Procesales garantizan la participación significativa de los padres. Si una barrera idiomática impide la comprensión total, el distrito está legalmente obligado a proporcionar traducción e interpretación.' },
+        action:     { en: 'I am formally requesting that all future IEP documents be translated into my native language before any meeting, and that a qualified interpreter be present at all IEP meetings. I am documenting this request in writing today.', es: 'Solicito formalmente que todos los documentos futuros del IEP sean traducidos a mi idioma nativo antes de cualquier reunión, y que un intérprete calificado esté presente en todas las reuniones del IEP. Estoy documentando esta solicitud por escrito hoy.' }
+      },
+    ];
+
+    // ── HELPER ─────────────────────────────────────────────────────────────
+    function getMailtoLink(actionText) {
+      const subject = encodeURIComponent('IEP Request — Formal Documentation');
+      const body = encodeURIComponent(actionText + '\n\n[Student Name]\n[Date]\n[School Name]\n[Parent/Guardian Signature]');
+      return `mailto:?subject=${subject}&body=${body}`;
+    }
+
+    const TYPE_META = {
+      red:    { label: { en: 'Legal Rights',        es: 'Derechos Legales'     }, color: 'bg-red-50 text-red-700 border-red-200',    icon: 'fa-solid fa-circle-exclamation', dot: 'bg-red-500' },
+      yellow: { label: { en: 'IEP Structure',       es: 'Estructura del IEP'  }, color: 'bg-amber-50 text-amber-700 border-amber-200', icon: 'fa-solid fa-triangle-exclamation', dot: 'bg-amber-400' },
+      green:  { label: { en: 'Behavior & Progress', es: 'Conducta y Progreso' }, color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: 'fa-solid fa-circle-check', dot: 'bg-emerald-500' },
+    };
+
+    // ── APP ────────────────────────────────────────────────────────────────
+    function App() {
+      const [view, setView]                 = useState('home');
+      const [search, setSearch]             = useState('');
+      const [filter, setFilter]             = useState('all');
+      const [isDyslexic, setIsDyslexic]     = useState(false);
+      const [language, setLanguage]         = useState('en');
+      const [savedTerms, setSavedTerms]     = useState([]);
+      const [savedScenarios, setSavedScenarios] = useState([]);
+      const [toastMsg, setToastMsg]         = useState('');
+
+      const t = (en, es) => language === 'en' ? en : es;
+
+      const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3000); };
+
+      const filteredTerms = useMemo(() => TERMS_DATA.filter(term => {
+        const q = search.toLowerCase();
+        const inText = [term.name[language], term.alt[language], term.def[language]].join(' ').toLowerCase().includes(q);
+        return inText && (filter === 'all' || term.type === filter);
+      }), [search, filter, language]);
+
+      const toggleSaveTerm     = id => setSavedTerms(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+      const toggleSaveScenario = id => setSavedScenarios(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+      const speakText = text => {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = language === 'en' ? 'en-US' : 'es-419';
+          window.speechSynthesis.speak(u);
+        }
+      };
+
+      const copyText = text => {
+        navigator.clipboard.writeText(text).then(() => showToast(t('Copied!', '¡Copiado!'))).catch(() => {
+          const el = document.createElement('textarea');
+          el.value = text; document.body.appendChild(el); el.select();
+          try { document.execCommand('copy'); showToast(t('Copied!', '¡Copiado!')); } catch {}
+          document.body.removeChild(el);
+        });
+      };
+
+      const totalSaved = savedTerms.length + savedScenarios.length;
+
+      const borderColor = { red: 'border-red-500', yellow: 'border-amber-400', green: 'border-emerald-500' };
+      const iconBg      = { red: 'bg-red-50 text-red-600', yellow: 'bg-amber-50 text-amber-600', green: 'bg-emerald-50 text-emerald-600' };
+
+      // ── NAV BAR ──────────────────────────────────────────────────────────
+      const NavBar = () => (
+        <nav role="navigation" aria-label="Tool controls" className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm print-hidden">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+                aria-label={language === 'en' ? 'Switch to Spanish' : 'Cambiar a inglés'}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-full text-sm font-bold text-slate-700 transition-colors">
+                <i className="fa-solid fa-language" aria-hidden="true"></i>
+                {language === 'en' ? 'Español' : 'English'}
+              </button>
+              <button
+                onClick={() => setIsDyslexic(!isDyslexic)}
+                aria-pressed={isDyslexic}
+                aria-label={isDyslexic ? t('Disable dyslexia-friendly font', 'Desactivar fuente para dislexia') : t('Enable dyslexia-friendly font', 'Activar fuente para dislexia')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors ${isDyslexic ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                <i className="fa-solid fa-font" aria-hidden="true"></i>
+                {t('Dyslexia Font', 'Fuente Dislexia')}
+              </button>
+            </div>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              {view !== 'home' && (
+                <button
+                  onClick={() => setView('home')}
+                  aria-label={t('Back to home', 'Volver al inicio')}
+                  className="flex items-center gap-2 px-4 py-2 bg-white rounded-full font-bold text-slate-600 hover:text-sky-600 transition-all border border-slate-200 shadow-sm">
+                  <i className="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                  {t('Back', 'Volver')}
+                </button>
+              )}
+              <button
+                onClick={() => setView('prep')}
+                aria-label={t(`My Prep Sheet, ${totalSaved} items saved`, `Mi Hoja de Preparación, ${totalSaved} elementos guardados`)}
+                className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold shadow-sm transition-all border ${totalSaved > 0 ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'}`}>
+                <i className={`fa-bookmark ${totalSaved > 0 ? 'fa-solid text-amber-500' : 'fa-regular'}`} aria-hidden="true"></i>
+                {t('My Prep Sheet', 'Mi Hoja')}
+                {totalSaved > 0 && (
+                  <span aria-hidden="true" className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full ml-1">{totalSaved}</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </nav>
+      );
+
+      // ── TOAST ────────────────────────────────────────────────────────────
+      const Toast = () => toastMsg ? (
+        <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 print-hidden">
+          <i className="fa-solid fa-check text-emerald-400" aria-hidden="true"></i> {toastMsg}
+        </div>
+      ) : null;
+
+      // ── HOME ─────────────────────────────────────────────────────────────
+      const HomeView = () => (
+        <div className="max-w-5xl mx-auto px-4 py-10 fade-in">
+          <div className="text-center mb-14 mt-2">
+            <i className="fa-regular fa-compass text-7xl text-sky-500 mb-5 block" aria-hidden="true"></i>
+            <h1 className="text-5xl md:text-6xl font-extrabold text-slate-800 mb-5 tracking-tight" style={{fontFamily:'var(--font-display)'}}>
+              {t('The IEP Journey', 'El Viaje del IEP')}
+            </h1>
+            <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+              {t(
+                'An interactive, bilingual tool grounded in IDEA and the Endrew F. standard. Navigate the path to appropriately ambitious goals — built for families, usable by all IEP team members.',
+                'Una herramienta interactiva y bilingüe fundamentada en IDEA y el estándar Endrew F. Navegue el camino hacia metas apropiadamente ambiciosas — creada para familias, utilizable por todos los miembros del equipo del IEP.'
+              )}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-4xl mx-auto">
+            {[
+              { view: 'idea',     bg: 'bg-sky-500',   icon: 'fa-solid fa-book-open',         num: '1',
+                title: { en: 'IDEA Basics',    es: 'Fundamentos' },
+                sub:   { en: 'FAPE · Endrew F. · Your legal rights', es: 'FAPE · Endrew F. · Sus derechos' } },
+              { view: 'sel',      bg: 'bg-rose-500',  icon: 'fa-solid fa-brain',              num: '2',
+                title: { en: 'SEL & Safety',   es: 'SEL y Conducta' },
+                sub:   { en: 'FBA · BIP · Positive behavior support', es: 'FBA · BIP · Apoyo conductual positivo' } },
+              { view: 'terms',    bg: 'bg-amber-500', icon: 'fa-solid fa-table-cells-large',  num: '3',
+                title: { en: 'Glossary',       es: 'Glosario' },
+                sub:   { en: '21 terms — searchable, bilingual, read aloud', es: '21 términos — buscables, bilingüe, lectura en voz alta' } },
+              { view: 'advocacy', bg: 'bg-slate-700', icon: 'fa-regular fa-message',          num: '4',
+                title: { en: 'Action Scripts', es: 'Guiones de Acción' },
+                sub:   { en: 'Ready-to-use scripts for IEP meetings', es: 'Guiones listos para reuniones del IEP' } },
+            ].map(card => (
+              <button key={card.view} onClick={() => setView(card.view)}
+                className={`${card.bg} p-6 rounded-3xl text-white shadow-md card-hover flex flex-col items-center text-center border-4 border-white focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-white/60`}
+                aria-label={`${card.num}. ${card.title[language]}: ${card.sub[language]}`}>
+                <div className="mb-3 bg-white/20 p-4 rounded-2xl">
+                  <i className={`${card.icon} text-2xl`} aria-hidden="true"></i>
+                </div>
+                <h2 className="font-bold text-lg mb-1">{card.num}. {card.title[language]}</h2>
+                <p className="text-white/80 text-xs leading-snug">{card.sub[language]}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Quick stats bar */}
+          <div className="mt-12 max-w-4xl mx-auto grid grid-cols-3 gap-4">
+            {[
+              { num: '21', label: { en: 'Bilingual Terms', es: 'Términos Bilingües' }, color: 'text-amber-600' },
+              { num: '3',  label: { en: 'Action Scripts',  es: 'Guiones de Acción'  }, color: 'text-sky-600'   },
+              { num: '2',  label: { en: 'Languages',       es: 'Idiomas'             }, color: 'text-emerald-600'},
+            ].map(stat => (
+              <div key={stat.num} className="bg-white rounded-2xl p-5 text-center shadow-sm border border-slate-100">
+                <div className={`text-3xl font-extrabold mb-1 ${stat.color}`}>{stat.num}</div>
+                <div className="text-xs text-slate-500 font-medium">{stat.label[language]}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      // ── BRANCH 1: IDEA ───────────────────────────────────────────────────
+      const IdeaView = () => (
+        <section id="main-content" className="max-w-4xl mx-auto p-4 mt-4 fade-in" aria-labelledby="idea-heading">
+          <h2 id="idea-heading" className="text-4xl font-bold text-sky-500 mb-8 border-l-8 border-sky-500 pl-6 py-2" style={{fontFamily:'var(--font-display)'}}>
+            1. {t('IDEA & Endrew F. Foundations', 'Fundamentos de IDEA y Endrew F.')}
+          </h2>
+          <div className="space-y-6">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+              <h3 className="text-2xl font-bold text-slate-800 mb-3">{t('The Law of Opportunity', 'La Ley de Oportunidad')}</h3>
+              <p className="text-lg text-slate-600 leading-relaxed">
+                {t('The Individuals with Disabilities Education Act (IDEA) guarantees that every eligible child with a disability receives an education designed to prepare them for "further education, employment, and independent living" — at no cost to their family (20 U.S.C. § 1400(d)).',
+                   'La Ley de Educación para Individuos con Discapacidades (IDEA) garantiza que cada niño elegible con una discapacidad reciba una educación diseñada para prepararlo para "educación superior, empleo y vida independiente" — sin costo para su familia (20 U.S.C. § 1400(d)).')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="bg-sky-50 p-7 rounded-[2rem] border border-sky-100">
+                <h4 className="text-xl font-bold text-sky-900 mb-2">{t('The FAPE Promise', 'La Promesa de FAPE')}</h4>
+                <p className="text-slate-700 leading-relaxed text-sm">
+                  {t('Free (no cost to the family) · Appropriate (meets the child\'s unique needs) · Public (provided by the school) · Education (specialized instruction and related services).',
+                     'Gratuita (sin costo para la familia) · Apropiada (satisface las necesidades únicas del niño) · Pública (proporcionada por la escuela) · Educación (instrucción especializada y servicios relacionados).')}
+                </p>
+              </div>
+              <div className="bg-emerald-50 p-7 rounded-[2rem] border border-emerald-100">
+                <h4 className="text-xl font-bold text-emerald-900 mb-2">{t('Appropriately Ambitious', 'Apropiadamente Ambicioso')}</h4>
+                <p className="text-slate-700 leading-relaxed text-sm">
+                  {t('The Supreme Court ruled unanimously in Endrew F. v. Douglas County (2017) that a school offering a merely "de minimis" education does not satisfy IDEA. Every IEP must be calculated to enable real progress.',
+                     'La Corte Suprema dictaminó por unanimidad en Endrew F. v. Douglas County (2017) que una escuela que ofrece una educación meramente "de minimis" no cumple con IDEA. Cada IEP debe estar calculado para permitir un progreso real.')}
+                </p>
+              </div>
+              <div className="bg-violet-50 p-7 rounded-[2rem] border border-violet-100">
+                <h4 className="text-xl font-bold text-violet-900 mb-2">{t('Your Role on the IEP Team', 'Su Rol en el Equipo del IEP')}</h4>
+                <p className="text-slate-700 leading-relaxed text-sm">
+                  {t('Parents are equal members of the IEP team — not guests. You have the right to participate in every meeting, review all evaluations, and disagree with any proposed change before it takes effect.',
+                     'Los padres son miembros iguales del equipo del IEP, no invitados. Tiene el derecho de participar en cada reunión, revisar todas las evaluaciones y estar en desacuerdo con cualquier cambio propuesto antes de que entre en vigor.')}
+                </p>
+              </div>
+              <div className="bg-amber-50 p-7 rounded-[2rem] border border-amber-100">
+                <h4 className="text-xl font-bold text-amber-900 mb-2">{t('Consent is Required', 'Se Requiere Consentimiento')}</h4>
+                <p className="text-slate-700 leading-relaxed text-sm">
+                  {t('The school must obtain your written informed consent before conducting an initial evaluation, before initial placement in special education, and before any significant change in services. You can revoke consent in writing at any time.',
+                     'La escuela debe obtener su consentimiento informado por escrito antes de realizar una evaluación inicial, antes de la colocación inicial en educación especial y antes de cualquier cambio significativo en los servicios. Puede revocar el consentimiento por escrito en cualquier momento.')}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 text-white p-7 rounded-[2rem]">
+              <p className="text-xs font-bold tracking-widest uppercase text-slate-400 mb-2">{t('Key Citation', 'Cita Clave')}</p>
+              <p className="text-lg font-bold leading-relaxed">
+                {t('"Every child should have the chance to meet challenging objectives." — Endrew F. v. Douglas County School District, 580 U.S. 386 (2017)',
+                   '"Cada niño debe tener la oportunidad de alcanzar objetivos desafiantes." — Endrew F. v. Douglas County School District, 580 U.S. 386 (2017)')}
+              </p>
+            </div>
+          </div>
+        </section>
+      );
+
+      // ── BRANCH 2: SEL ────────────────────────────────────────────────────
+      const SelView = () => (
+        <section id="main-content" className="max-w-5xl mx-auto p-4 mt-4 fade-in" aria-labelledby="sel-heading">
+          <h2 id="sel-heading" className="text-4xl font-bold text-rose-500 mb-8 border-l-8 border-rose-500 pl-6 py-2" style={{fontFamily:'var(--font-display)'}}>
+            2. {t('SEL Foundation & Behavior Support', 'Fundamentos de SEL y Apoyo Conductual')}
+          </h2>
+          <div className="space-y-6">
+            <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
+              <h3 className="text-2xl font-bold text-rose-600 mb-4">{t('Behavior is Communication', 'El Comportamiento es Comunicación')}</h3>
+              <p className="text-lg text-slate-600 leading-relaxed">
+                {t('When a student with a disability demonstrates challenging behavior, IDEA requires the IEP team to consider "the use of positive behavioral interventions and supports" — not punishment or exclusion. Behavior is almost always a communication skill deficit, not a choice.',
+                   'Cuando un estudiante con una discapacidad demuestra comportamientos desafiantes, IDEA requiere que el equipo del IEP considere "el uso de intervenciones y apoyos conductuales positivos", no el castigo o la exclusión. El comportamiento casi siempre es un déficit de habilidades de comunicación, no una elección.')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {[
+                { bg: 'bg-red-50',     border: 'border-red-400',     title: { en: 'Regulation First', es: 'Regulación Primero' },
+                  body: { en: 'A student cannot access academic instruction if they are in a state of dysregulation. Social-emotional safety must precede academic demands.', es: 'Un estudiante no puede acceder a la instrucción académica si está en un estado de desregulación. La seguridad socioemocional debe preceder a las demandas académicas.' }},
+                { bg: 'bg-amber-50',   border: 'border-amber-400',   title: { en: 'Skill vs. Will', es: 'Habilidad vs. Voluntad' },
+                  body: { en: 'Most "defiant" behavior reflects a missing skill — not a bad attitude. The question is never "why won\'t they?" but "what are they still learning to do?"', es: 'La mayoría del comportamiento "desafiante" refleja una habilidad que falta, no una mala actitud. La pregunta nunca es "¿por qué no lo hacen?" sino "¿qué están aprendiendo todavía?"' }},
+                { bg: 'bg-emerald-50', border: 'border-emerald-400', title: { en: 'Positive Supports', es: 'Apoyos Positivos' },
+                  body: { en: 'Punishment removes the behavior temporarily. Positive behavioral supports teach a replacement skill that meets the same need — the only approach with lasting outcomes.', es: 'El castigo elimina el comportamiento temporalmente. Los apoyos conductuales positivos enseñan una habilidad de reemplazo que satisface la misma necesidad, el único enfoque con resultados duraderos.' }},
+              ].map((card, i) => (
+                <div key={i} className={`p-6 ${card.bg} rounded-2xl border-l-4 ${card.border}`}>
+                  <h3 className="font-bold text-slate-800 mb-2">{card.title[language]}</h3>
+                  <p className="text-slate-700 text-sm leading-relaxed">{card.body[language]}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="p-3 bg-red-50 rounded-xl"><i className="fa-solid fa-magnifying-glass text-red-500 text-lg" aria-hidden="true"></i></span>
+                  <h4 className="text-lg font-bold text-slate-800">{t('FBA: Find the WHY', 'FBA: Encontrar el POR QUÉ')}</h4>
+                </div>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {t('A Functional Behavior Assessment investigates three things: what triggers the behavior (antecedent), what the behavior looks like (behavior), and what the child gets from it (consequence/function). Without understanding the function, any intervention is guesswork.',
+                     'Una Evaluación Funcional del Comportamiento investiga tres cosas: qué desencadena el comportamiento (antecedente), cómo se ve el comportamiento y qué obtiene el niño con él (consecuencia/función). Sin entender la función, cualquier intervención es una suposición.')}
+                </p>
+              </div>
+              <div className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="p-3 bg-emerald-50 rounded-xl"><i className="fa-solid fa-bolt text-emerald-500 text-lg" aria-hidden="true"></i></span>
+                  <h4 className="text-lg font-bold text-slate-800">{t('BIP: Build the HOW', 'BIP: Construir el CÓMO')}</h4>
+                </div>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {t('A Behavior Intervention Plan is a written, proactive strategy that comes directly from the FBA. It identifies replacement behaviors, environmental modifications, and how every adult in the building should respond — consistently.',
+                     'Un Plan de Intervención de Comportamiento es una estrategia escrita y proactiva que proviene directamente del FBA. Identifica comportamientos de reemplazo, modificaciones ambientales y cómo cada adulto en el edificio debe responder, de manera consistente.')}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 text-white p-7 rounded-[2rem]">
+              <p className="text-xs font-bold tracking-widest uppercase text-slate-400 mb-2">{t('Your Right', 'Su Derecho')}</p>
+              <p className="text-base font-medium leading-relaxed">
+                {t('If your child\'s IEP does not include a BIP and their behavior is impeding their learning or the learning of other students, you have the right to request that the IEP team conduct an FBA and develop a BIP immediately — in writing.',
+                   'Si el IEP de su hijo no incluye un BIP y su comportamiento está impidiendo su aprendizaje o el de otros estudiantes, tiene el derecho de solicitar que el equipo del IEP realice una FBA y desarrolle un BIP de inmediato, por escrito.')}
+              </p>
+            </div>
+          </div>
+        </section>
+      );
+
+      // ── BRANCH 3: GLOSSARY ───────────────────────────────────────────────
+      const TermsView = () => (
+        <section id="main-content" className="max-w-7xl mx-auto p-4 mt-4 fade-in" aria-labelledby="glossary-heading">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-5">
+            <div className="border-l-8 border-amber-500 pl-6 py-1">
+              <h2 id="glossary-heading" className="text-4xl font-bold text-amber-500" style={{fontFamily:'var(--font-display)'}}>
+                3. {t('Bilingual Glossary', 'Glosario Bilingüe')}
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">{t('21 terms · searchable · read aloud', '21 términos · buscable · lectura en voz alta')}</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+              <div className="relative">
+                <label htmlFor="term-search" className="sr-only">{t('Search terms', 'Buscar términos')}</label>
+                <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"></i>
+                <input
+                  id="term-search"
+                  type="search"
+                  placeholder={t('Search terms…', 'Buscar términos…')}
+                  className="pl-11 pr-5 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400 w-full sm:w-64 shadow-sm bg-white"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Category filter buttons */}
+          <fieldset className="mb-6" aria-label={t('Filter by category', 'Filtrar por categoría')}>
+            <legend className="sr-only">{t('Filter terms by category', 'Filtrar términos por categoría')}</legend>
+            <div className="flex flex-wrap gap-2" role="group">
+              {[
+                { val: 'all',    label: { en: 'All 21', es: 'Todos (21)' }, cls: 'bg-slate-200 text-slate-700 hover:bg-slate-300' },
+                { val: 'red',    label: { en: '● Legal Rights (7)', es: '● Derechos Legales (7)' }, cls: 'bg-red-100 text-red-700 hover:bg-red-200' },
+                { val: 'yellow', label: { en: '● IEP Structure (7)', es: '● Estructura IEP (7)' }, cls: 'bg-amber-100 text-amber-700 hover:bg-amber-200' },
+                { val: 'green',  label: { en: '● Behavior & Progress (7)', es: '● Conducta y Progreso (7)' }, cls: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' },
+              ].map(btn => (
+                <button
+                  key={btn.val}
+                  onClick={() => setFilter(btn.val)}
+                  aria-pressed={filter === btn.val}
+                  className={`filter-btn px-4 py-2 rounded-full text-sm font-bold transition-all ${btn.cls} ${filter === btn.val ? 'active ring-2 ring-offset-1 ring-current' : ''}`}>
+                  {btn.label[language]}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          {filteredTerms.length === 0 && (
+            <div role="status" className="text-center py-16 text-slate-400">
+              <i className="fa-solid fa-magnifying-glass text-4xl mb-3 block" aria-hidden="true"></i>
+              <p className="font-medium">{t('No terms match your search.', 'Ningún término coincide con su búsqueda.')}</p>
+            </div>
+          )}
+
+          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" aria-label={t('IEP Terms', 'Términos del IEP')}>
+            {filteredTerms.map(term => {
+              const saved = savedTerms.includes(term.id);
+              return (
+                <li key={term.id} className={`p-6 bg-white rounded-3xl border-l-8 shadow-sm flex flex-col relative card-hover ${borderColor[term.type]}`}>
+                  {/* Category badge */}
+                  <span className={`absolute top-4 left-6 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${TYPE_META[term.type].color}`}>
+                    {TYPE_META[term.type].label[language]}
+                  </span>
+
+                  <div className="absolute top-4 right-4 flex gap-1">
+                    <button
+                      onClick={() => speakText(`${term.name[language]}. ${term.alt[language]}. ${term.def[language]}`)}
+                      aria-label={t(`Read aloud: ${term.name[language]}`, `Leer en voz alta: ${term.name[language]}`)}
+                      className="p-2 text-slate-400 hover:text-sky-500 hover:bg-sky-50 rounded-full transition-colors">
+                      <i className="fa-solid fa-volume-high" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      onClick={() => toggleSaveTerm(term.id)}
+                      aria-label={saved ? t(`Remove ${term.name[language]} from prep sheet`, `Quitar ${term.name[language]} de la hoja`) : t(`Save ${term.name[language]} to prep sheet`, `Guardar ${term.name[language]} en la hoja`)}
+                      aria-pressed={saved}
+                      className={`p-2 rounded-full transition-colors ${saved ? 'text-amber-500 bg-amber-50' : 'text-slate-400 hover:bg-slate-50'}`}>
+                      <i className={`fa-bookmark ${saved ? 'fa-solid' : 'fa-regular'}`} aria-hidden="true"></i>
+                    </button>
+                  </div>
+
+                  <div className="flex items-start gap-3 mt-7 mb-3 pr-16">
+                    <span className={`p-3 rounded-xl shrink-0 ${iconBg[term.type]}`} aria-hidden="true">
+                      <i className={`${term.icon} text-lg`}></i>
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-800 leading-tight">{term.name[language]}</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-0.5">{term.alt[language]}</p>
+                    </div>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed text-sm mt-auto">{term.def[language]}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      );
+
+      // ── BRANCH 4: ADVOCACY ───────────────────────────────────────────────
+      const AdvocacyView = () => (
+        <section id="main-content" className="max-w-5xl mx-auto p-4 mt-4 fade-in" aria-labelledby="advocacy-heading">
+          <h2 id="advocacy-heading" className="text-4xl font-bold text-slate-700 mb-3 border-l-8 border-slate-700 pl-6 py-2" style={{fontFamily:'var(--font-display)'}}>
+            4. {t('Advocacy Action Scripts', 'Guiones de Abogacía')}
+          </h2>
+          <p className="text-slate-500 mb-8 pl-6">
+            {t('Recognize your situation, understand the legal context, and use the ready-made script — or email it directly.', 'Reconozca su situación, comprenda el contexto legal y use el guión preparado, o envíelo directamente por correo electrónico.')}
+          </p>
+          <div className="space-y-8">
+            {SCENARIOS.map(s => {
+              const saved = savedScenarios.includes(s.id);
+              return (
+                <article key={s.id} className="bg-white p-8 md:p-10 rounded-[3rem] shadow-sm border border-slate-100 relative" aria-label={s.feeling[language]}>
+                  <div className="absolute top-5 right-5 flex items-center gap-1 bg-slate-50 p-1 rounded-full border border-slate-100">
+                    <button
+                      onClick={() => speakText(s.action[language])}
+                      aria-label={t('Read action script aloud', 'Leer el guión en voz alta')}
+                      className="p-3 text-slate-500 hover:text-sky-600 hover:bg-white rounded-full transition-all">
+                      <i className="fa-solid fa-volume-high" aria-hidden="true"></i>
+                    </button>
+                    <button
+                      onClick={() => copyText(s.action[language])}
+                      aria-label={t('Copy action script to clipboard', 'Copiar el guión al portapapeles')}
+                      className="p-3 text-slate-500 hover:text-sky-600 hover:bg-white rounded-full transition-all">
+                      <i className="fa-regular fa-copy" aria-hidden="true"></i>
+                    </button>
+                    <a
+                      href={getMailtoLink(s.action[language])}
+                      aria-label={t('Email this action script', 'Enviar este guión por correo electrónico')}
+                      className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-white rounded-full transition-all">
+                      <i className="fa-regular fa-envelope" aria-hidden="true"></i>
+                    </a>
+                    <div className="w-px h-5 bg-slate-200 mx-0.5" aria-hidden="true"></div>
+                    <button
+                      onClick={() => toggleSaveScenario(s.id)}
+                      aria-pressed={saved}
+                      aria-label={saved ? t('Remove from prep sheet', 'Quitar de la hoja de preparación') : t('Save to prep sheet', 'Guardar en la hoja de preparación')}
+                      className={`p-3 rounded-full transition-all ${saved ? 'text-amber-500 bg-white shadow-sm' : 'text-slate-400 hover:bg-white'}`}>
+                      <i className={`fa-bookmark ${saved ? 'fa-solid' : 'fa-regular'}`} aria-hidden="true"></i>
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-5 mb-7 pr-44">
+                    <div className="p-4 bg-slate-50 rounded-2xl shrink-0" aria-hidden="true">
+                      <i className={s.iconCls}></i>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-800 leading-snug">{s.feeling[language]}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-5 border-t border-slate-100">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">{t('Legal Context', 'Contexto Legal')}</p>
+                      <p className="text-slate-700 leading-relaxed text-sm">{s.connection[language]}</p>
+                    </div>
+                    <div className="p-6 bg-sky-50 rounded-2xl border-l-8 border-sky-400">
+                      <p className="text-[10px] font-black uppercase text-sky-600 tracking-widest mb-2">{t('Your Script', 'Su Guión')}</p>
+                      <p className="font-bold text-slate-800 leading-relaxed text-sm">{s.action[language]}</p>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      );
+
+      // ── PREP SHEET ───────────────────────────────────────────────────────
+      const PrepView = () => (
+        <section id="main-content" className="max-w-4xl mx-auto p-4 mt-4 fade-in" aria-labelledby="prep-heading">
+          <div className="bg-amber-50 p-8 rounded-[3rem] text-center mb-8 border border-amber-100 print:border-none print:bg-white print:p-0">
+            <i className="fa-solid fa-bookmark text-5xl text-amber-500 mb-3 block print-hidden" aria-hidden="true"></i>
+            <h2 id="prep-heading" className="text-3xl font-bold text-amber-800 print:text-black" style={{fontFamily:'var(--font-display)'}}>
+              {t('My IEP Prep Sheet', 'Mi Hoja de Preparación')}
+            </h2>
+            <p className="text-amber-700 mt-1 text-sm">{t(`${totalSaved} item${totalSaved !== 1 ? 's' : ''} saved`, `${totalSaved} elemento${totalSaved !== 1 ? 's' : ''} guardado${totalSaved !== 1 ? 's' : ''}`)}</p>
+            {totalSaved > 0 && (
+              <button
+                onClick={() => window.print()}
+                aria-label={t('Print prep sheet', 'Imprimir hoja de preparación')}
+                className="mt-5 px-7 py-3 bg-slate-800 text-white rounded-full font-bold shadow hover:bg-slate-700 transition print-hidden inline-flex items-center gap-2">
+                <i className="fa-solid fa-print" aria-hidden="true"></i>
+                {t('Print', 'Imprimir')}
+              </button>
+            )}
+          </div>
+
+          {totalSaved === 0 ? (
+            <div className="text-center py-16 bg-white rounded-[3rem] border border-slate-100 shadow-sm print-hidden">
+              <i className="fa-regular fa-bookmark text-6xl text-slate-200 mb-4 block" aria-hidden="true"></i>
+              <h3 className="text-xl font-bold text-slate-400 mb-1">{t('Your prep sheet is empty.', 'Su hoja de preparación está vacía.')}</h3>
+              <p className="text-slate-400 text-sm mb-5">{t('Save terms or action scripts while browsing.', 'Guarde términos o guiones mientras navega.')}</p>
+              <button onClick={() => setView('advocacy')} className="px-6 py-3 bg-sky-500 text-white rounded-full font-bold shadow hover:bg-sky-600 transition">
+                {t('Browse Action Scripts', 'Ver Guiones de Acción')}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              {savedTerms.length > 0 && (
+                <div className="print-break-inside-avoid">
+                  <h3 className="text-xl font-bold text-slate-700 mb-4 border-b border-slate-200 pb-2 print:text-black print:border-black">{t('Saved Vocabulary', 'Vocabulario Guardado')}</h3>
+                  <ul className="space-y-3" aria-label={t('Saved terms', 'Términos guardados')}>
+                    {TERMS_DATA.filter(t2 => savedTerms.includes(t2.id)).map(term => (
+                      <li key={term.id} className={`bg-white p-5 rounded-2xl shadow-sm border-l-8 ${borderColor[term.type]} flex justify-between items-start gap-4 print:border-l-4 print:border-slate-800 print:shadow-none`}>
+                        <div>
+                          <h4 className="font-bold text-base print:text-black">
+                            {term.name[language]}
+                            <span className="text-xs font-normal text-slate-400 ml-2 print:text-slate-600">— {term.alt[language]}</span>
+                          </h4>
+                          <p className="text-slate-600 text-sm mt-1 leading-relaxed print:text-black">{term.def[language]}</p>
+                        </div>
+                        <button
+                          onClick={() => toggleSaveTerm(term.id)}
+                          aria-label={t(`Remove ${term.name[language]}`, `Quitar ${term.name[language]}`)}
+                          className="text-slate-300 hover:text-red-500 p-1 shrink-0 print-hidden">
+                          <i className="fa-solid fa-xmark text-xl" aria-hidden="true"></i>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {savedScenarios.length > 0 && (
+                <div>
+                  <h3 className="text-xl font-bold text-slate-700 mb-4 border-b border-slate-200 pb-2 mt-6 print:text-black print:border-black">{t('Saved Action Scripts', 'Guiones Guardados')}</h3>
+                  <ul className="space-y-5" aria-label={t('Saved scripts', 'Guiones guardados')}>
+                    {SCENARIOS.filter(s => savedScenarios.includes(s.id)).map(s => (
+                      <li key={s.id} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 print:border-slate-300 print:rounded-lg print:shadow-none print-break-inside-avoid">
+                        <p className="text-[10px] font-black uppercase text-sky-600 tracking-widest mb-1">{t('Your Script:', 'Su Guión:')}</p>
+                        <p className="text-base font-bold text-slate-800 print:text-black mb-3">{s.action[language]}</p>
+                        <div className="border-t border-slate-100 pt-3 print:border-slate-300">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t('Legal Context:', 'Contexto Legal:')}</p>
+                          <p className="text-sm text-slate-600 print:text-slate-800">{s.connection[language]}</p>
+                        </div>
+                        <div className="flex gap-2 mt-4 print-hidden">
+                          <button onClick={() => speakText(s.action[language])} aria-label={t('Read aloud', 'Leer en voz alta')} className="p-3 bg-slate-50 text-slate-600 hover:text-sky-600 rounded-full"><i className="fa-solid fa-volume-high" aria-hidden="true"></i></button>
+                          <button onClick={() => copyText(s.action[language])} aria-label={t('Copy', 'Copiar')} className="p-3 bg-slate-50 text-slate-600 hover:text-sky-600 rounded-full"><i className="fa-regular fa-copy" aria-hidden="true"></i></button>
+                          <a href={getMailtoLink(s.action[language])} aria-label={t('Email script', 'Enviar guión')} className="p-3 bg-slate-50 text-slate-600 hover:text-emerald-600 rounded-full"><i className="fa-regular fa-envelope" aria-hidden="true"></i></a>
+                          <button onClick={() => toggleSaveScenario(s.id)} aria-label={t('Remove', 'Quitar')} className="p-2 ml-1 text-slate-300 hover:text-red-500"><i className="fa-solid fa-xmark text-lg" aria-hidden="true"></i></button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      );
+
+      // ── RENDER ───────────────────────────────────────────────────────────
+      return (
+        <div className={`min-h-screen pb-24 text-slate-800 ${isDyslexic ? 'dyslexic-mode bg-[#F0F4F8]' : 'bg-[#FAF9F6]'}`}>
+          <Toast />
+          <NavBar />
+          <main id="main-content" tabIndex="-1">
+            {view === 'home'     && <HomeView />}
+            {view === 'idea'     && <IdeaView />}
+            {view === 'sel'      && <SelView />}
+            {view === 'terms'    && <TermsView />}
+            {view === 'advocacy' && <AdvocacyView />}
+            {view === 'prep'     && <PrepView />}
+          </main>
+
+          {/* Footer */}
+          <footer className="mt-16 border-t border-slate-200 bg-white py-6 print-hidden" role="contentinfo">
+            <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-400">
+              <p className="font-medium text-slate-500">
+                <span className="font-bold text-slate-700">The IEP Journey</span> · Bilingual Edition · v1.0 · 2026
+              </p>
+              <p>Catrina Wright · NLU/CPS Teacher Residency · SPE-587</p>
+              <p>
+                <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener" className="hover:text-sky-600 transition-colors" aria-label="CC BY-NC 4.0 License (opens in new tab)">
+                  CC BY-NC 4.0
+                </a>
+                {' · '}
+                <a href="mailto:cwright.specialed@gmail.com" className="hover:text-sky-600 transition-colors">
+                  cwright.specialed@gmail.com
+                </a>
+              </p>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
